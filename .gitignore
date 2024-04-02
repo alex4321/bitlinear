@@ -1,0 +1,4 @@
+# Python + Jupyter gitignore
+*.pyc
+*.ipynb_checkpoints/
+__pycache__/
