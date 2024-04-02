@@ -9,11 +9,11 @@ from typing import List, Union, Tuple, Iterable
 import torch
 from .adapters import LinearAdapter, LoRAAdapter, MergeableLayer
 
-# %% ../nbs/01_bitlinear.ipynb 7
+# %% ../nbs/01_bitlinear.ipynb 8
 STORAGE_BIT_COUNT = 8
 STORAGE_DTYPE = torch.ByteTensor
 
-# %% ../nbs/01_bitlinear.ipynb 8
+# %% ../nbs/01_bitlinear.ipynb 9
 def _get_parameter_count_per_n_bits(n: int) -> int:
     i = 0
     while True:
@@ -27,7 +27,7 @@ def _get_parameter_count_per_n_bits(n: int) -> int:
 STORAGE_VALUES_PER_ITEM = _get_parameter_count_per_n_bits(STORAGE_BIT_COUNT)
 STORAGE_VALUES_PER_ITEM
 
-# %% ../nbs/01_bitlinear.ipynb 11
+# %% ../nbs/01_bitlinear.ipynb 12
 def _generate_parameter_mappings(parameter_count: int, pad_to_size: int) -> List[List[int]]:
     def _iter(rest_count):
         if rest_count == 0:
@@ -48,14 +48,14 @@ def _generate_parameter_mappings(parameter_count: int, pad_to_size: int) -> List
 def _generate_parameter_mappings_tensor(parameter_count: int, pad_to_size: int) -> torch.Tensor:
     return torch.FloatTensor(_generate_parameter_mappings(parameter_count, pad_to_size))
 
-# %% ../nbs/01_bitlinear.ipynb 12
+# %% ../nbs/01_bitlinear.ipynb 13
 MAPPING_UINT8_TO_5_PARAMS = _generate_parameter_mappings_tensor(
     STORAGE_VALUES_PER_ITEM,
     2 ** STORAGE_BIT_COUNT
 )
 assert MAPPING_UINT8_TO_5_PARAMS.shape == (256, 5)
 
-# %% ../nbs/01_bitlinear.ipynb 15
+# %% ../nbs/01_bitlinear.ipynb 16
 @torch.no_grad
 def dequantize_weights(weight_mapping: torch.Tensor, packed_weights: torch.Tensor, scale: Union[torch.Tensor, float]) \
     -> torch.Tensor:
@@ -65,7 +65,7 @@ def dequantize_weights(weight_mapping: torch.Tensor, packed_weights: torch.Tenso
     dequantized_weights_k = weight_mapping[packed_weights.long(), :].view(weights_packed_shape)
     return dequantized_weights_k * scale
 
-# %% ../nbs/01_bitlinear.ipynb 17
+# %% ../nbs/01_bitlinear.ipynb 18
 @torch.no_grad
 def quantize_weights(weight_mapping: torch.FloatTensor, weights: torch.FloatTensor, mean: Union[torch.Tensor, float]) \
     -> torch.Tensor:
@@ -83,7 +83,7 @@ def quantize_weights(weight_mapping: torch.FloatTensor, weights: torch.FloatTens
     weigths_group_chosen.clamp_(0, 3 ** STORAGE_VALUES_PER_ITEM - 1)
     return weigths_group_chosen.byte()
 
-# %% ../nbs/01_bitlinear.ipynb 20
+# %% ../nbs/01_bitlinear.ipynb 21
 class BitLinear(MergeableLayer):
     def __init__(self,
                  in_features: int,
