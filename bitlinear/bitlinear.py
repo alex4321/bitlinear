@@ -100,6 +100,8 @@ class BitLinear(MergeableLayer):
             self.mapping = MAPPING_UINT8_TO_5_PARAMS.to(device=device)
         else:
             self.mapping = MAPPING_UINT8_TO_5_PARAMS * 1
+        self.mapping_cpu = MAPPING_UINT8_TO_5_PARAMS * 1
+            
 
         self.original_weights_filename = original_weights_filename
         
@@ -109,7 +111,13 @@ class BitLinear(MergeableLayer):
             device=device
         ))
         
-        self.bias = initial_linear.bias
+        if bias:
+            bias_tensor = initial_linear.bias.data
+            if device is not None:
+                bias_tensor = bias_tensor.to(device)
+            self.bias = torch.nn.Parameter(bias_tensor)
+        else:
+            self.register_parameter("bias", None)
         if original_weights_filename:
             torch.save(
                 initial_linear.weight,
@@ -126,10 +134,11 @@ class BitLinear(MergeableLayer):
 
     @torch.no_grad
     def _quantize_weight(self, weight: torch.Tensor, device: str) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        mean = weight.mean().to(device)
-        scale = weight.abs().mean().to(device)
-        qweight = quantize_weights(self.mapping, weight, mean).to(device)
-        return mean, scale, qweight
+        weight = weight.cpu()
+        mean = weight.mean().cpu()
+        scale = weight.abs().mean().cpu()
+        qweight = quantize_weights(self.mapping_cpu, weight, mean).to(device)
+        return mean.to(device), scale.to(device), qweight.to(device)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         W = dequantize_weights(self.mapping, self.quant_weight, self.scale)
