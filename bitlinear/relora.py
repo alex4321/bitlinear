@@ -43,13 +43,12 @@ class ReLoRAOptimizer(Optimizer):
         return self.optimizer_cls(self.inner_params, **params)
     
     def step(self) -> None:
-        if self.made_steps % self.reset_n_steps == 0:
-            if self.made_steps != 0:
-                for layer in self.mergeable_layers:
-                    layer.merge_adapter()
+        self.optimizer.step()
+        if self.made_steps > 0 and self.made_steps % self.reset_n_steps == 0:
+            for layer in self.mergeable_layers:
+                layer.merge_adapter()
             self.optimizer = self._initialize_optimizer()
             gc.collect()
-        self.optimizer.step()
         self.made_steps += 1
 
     @property
