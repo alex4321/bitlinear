@@ -1,5 +1,18 @@
 {
   "index.ipynb": {
-    "README.md": "6bb11f60"
+    "README.md": "f11bdae0",
+    "index.html": "fcdb5fa7"
+  },
+  "01_bitlinear.ipynb": {
+    "bitlinear.html": "2629d7f5"
+  },
+  "00_adapters.ipynb": {
+    "adapters.html": "6c33e77c"
+  },
+  "02_relora.ipynb": {
+    "relora.html": "c4156a58"
+  },
+  "03_mistral.ipynb": {
+    "03_mistral.html": "2c5fa33f"
   }
 }

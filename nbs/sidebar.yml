@@ -1,0 +1,8 @@
+website:
+  sidebar:
+    contents:
+      - index.ipynb
+      - 00_adapters.ipynb
+      - 01_bitlinear.ipynb
+      - 02_relora.ipynb
+      - 03_mistral.ipynb
