@@ -204,8 +204,19 @@ trainer = Trainer(
 trainer.train()
 ```
 
-``` python
-1+1
-```
+So far it seems to have far more memory efficiency (9GB consumed in this
+method and ~29Gb consumed through a normal training).
 
-    2
+The quality seemed comparable, but it was just a start of the training
+process, so no conclusions yet.
+
+Before continuing the stuff I will have to debug
+
+    /usr/local/lib/python3.10/dist-packages/torch/serialization.py in _save(obj, zip_file, pickle_module, pickle_protocol, _disable_byteorder_record)
+        839     pickler = pickle_module.Pickler(data_buf, protocol=pickle_protocol)
+        840     pickler.persistent_id = persistent_id
+    --> 841     pickler.dump(obj)
+        842     data_value = data_buf.getvalue()
+        843     zip_file.write_record('data.pkl', data_value, len(data_value))
+
+    AttributeError: Can't pickle local object 'ReLoRASchedulerLambda._wrap_lr_lambda.<locals>._func'

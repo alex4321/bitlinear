@@ -396,12 +396,17 @@ window.Quarto = {
 <span id="cb2-141"><a href="#cb2-141" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-142"><a href="#cb2-142" aria-hidden="true" tabindex="-1"></a><span class="co"># Train</span></span>
 <span id="cb2-143"><a href="#cb2-143" aria-hidden="true" tabindex="-1"></a>trainer.train()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div id="cell-7" class="cell">
-<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="dv">1</span><span class="op">+</span><span class="dv">1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-display">
-<pre><code>2</code></pre>
-</div>
-</div>
+<p>So far it seems to have far more memory efficiency (9GB consumed in this method and ~29Gb consumed through a normal training).</p>
+<p>The quality seemed comparable, but it was just a start of the training process, so no conclusions yet.</p>
+<p>Before continuing the stuff I will have to debug</p>
+<pre><code>/usr/local/lib/python3.10/dist-packages/torch/serialization.py in _save(obj, zip_file, pickle_module, pickle_protocol, _disable_byteorder_record)
+    839     pickler = pickle_module.Pickler(data_buf, protocol=pickle_protocol)
+    840     pickler.persistent_id = persistent_id
+--&gt; 841     pickler.dump(obj)
+    842     data_value = data_buf.getvalue()
+    843     zip_file.write_record('data.pkl', data_value, len(data_value))
+
+AttributeError: Can't pickle local object 'ReLoRASchedulerLambda._wrap_lr_lambda.&lt;locals&gt;._func'</code></pre>
 
 
 </section>
