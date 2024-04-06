@@ -32,23 +32,31 @@ class ReLoRAOptimizer(Optimizer):
         self.optimizer = self._initialize_optimizer()
         super(ReLoRAOptimizer, self).__init__(params_list, {})
         self.optimizer = self._initialize_optimizer()
-        gc.collect()
+        self._cleanup()
 
         self.mergeable_layers = mergeable_layers
         self.reset_n_steps = reset_n_steps
         self.made_steps = 0
+    
+    def _cleanup(self):
+        gc.collect()
+        torch.cuda.empty_cache()
 
     def _initialize_optimizer(self) -> Optimizer:
         params = dict(lr=self.lr, **self.optimizer_params)
         return self.optimizer_cls(self.inner_params, **params)
     
-    def step(self) -> None:
-        self.optimizer.step()
+    def zero_grad(self, set_to_none: bool = True) -> None:
+        return self.optimizer.zero_grad(set_to_none=set_to_none)
+    
+    def step(self, *args, **kwargs) -> None:
+        self.optimizer.step(*args, **kwargs)
         if self.made_steps > 0 and self.made_steps % self.reset_n_steps == 0:
             for layer in self.mergeable_layers:
                 layer.merge_adapter()
+            self.optimizer = None
+            self._cleanup()
             self.optimizer = self._initialize_optimizer()
-            gc.collect()
         self.made_steps += 1
 
     @property

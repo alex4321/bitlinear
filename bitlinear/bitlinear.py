@@ -190,10 +190,10 @@ class BitLinear(MergeableLayer):
         self.out_features = out_features
 
         if device:
-            self.mapping = MAPPING_UINT8_TO_5_PARAMS.to(device=device)
+            mapping = MAPPING_UINT8_TO_5_PARAMS.to(device=device)
         else:
-            self.mapping = MAPPING_UINT8_TO_5_PARAMS * 1
-            
+            mapping = MAPPING_UINT8_TO_5_PARAMS * 1
+        self.mapping, = self._wrap_parameters([mapping])
 
         self.original_weights_filename = original_weights_filename
         
@@ -217,7 +217,7 @@ class BitLinear(MergeableLayer):
             )        
         
         self.adapter = adapter
-
+    
     def _wrap_parameters(self, tensors: Iterable[torch.Tensor]) -> List[torch.Tensor]:
         return [
             torch.nn.Parameter(tensor, requires_grad=False)
