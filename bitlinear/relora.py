@@ -92,20 +92,13 @@ class ReLoRASchedulerLambda:
     def __init__(self, lr_lambda: callable, reset_n_steps: int, warmup_n_steps: int):
         assert is_pickleable(lr_lambda), "lr_lambda should be a pickleable object to use in the training process. " + \
             "Otherwise many popular trainer loop implementations will fail"
-        self.func = self._wrap_lr_lambda(lr_lambda)
+        self.lr_lambda = lr_lambda
         self.reset_n_steps = reset_n_steps
         self.warmup_n_steps = warmup_n_steps
     
-    def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        return self.func(*args, **kwargs)
-    
-    def _wrap_lr_lambda(self, func):
-        def _func(step):
-            if step % self.reset_n_steps < self.warmup_n_steps:
-                k = (step % self.reset_n_steps) / self.warmup_n_steps
-            else:
-                k = 1
-            value = func(step) * k
-            return value
-        
-        return _func
+    def __call__(self, step: int) -> Any:
+        if step % self.reset_n_steps < self.warmup_n_steps:
+            k = (step % self.reset_n_steps) / self.warmup_n_steps
+        else:
+            k = 1
+        return self.lr_lambda(step) * k
