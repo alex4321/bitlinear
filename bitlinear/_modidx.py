@@ -135,4 +135,5 @@ d = { 'settings': { 'branch': 'main',
                                   'bitlinear.relora.ReLoRASchedulerLambda.__init__': ( 'relora.html#reloraschedulerlambda.__init__',
                                                                                        'bitlinear/relora.py'),
                                   'bitlinear.relora.ReLoRASchedulerLambda._wrap_lr_lambda': ( 'relora.html#reloraschedulerlambda._wrap_lr_lambda',
-                                                                                              'bitlinear/relora.py')}}}
+                                                                                              'bitlinear/relora.py'),
+                                  'bitlinear.relora.is_pickleable': ('relora.html#is_pickleable', 'bitlinear/relora.py')}}}
