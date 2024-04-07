@@ -11,6 +11,7 @@ import torch
 import numba as nb
 import numpy as np
 from .adapters import LinearAdapter, LoRAAdapter, MergeableLayer
+import math
 
 # %% ../nbs/01_bitlinear.ipynb 8
 STORAGE_BIT_COUNT = 8
@@ -182,9 +183,9 @@ class BitLinear(MergeableLayer):
                  device=None,
                  dtype=None,
                  original_weights_filename: Union[str, None] = None,
-                 adapter: Union[None, LinearAdapter]=None):
+                 adapter: Union[None, LinearAdapter]=None,
+                 initial_linear: Union[None, torch.nn.Linear] = None):
         super(BitLinear, self).__init__(adapter=adapter)
-        assert in_features % STORAGE_VALUES_PER_ITEM == 0
 
         self.in_features = in_features
         self.out_features = out_features
@@ -197,14 +198,20 @@ class BitLinear(MergeableLayer):
 
         self.original_weights_filename = original_weights_filename
         
-        initial_linear = torch.nn.Linear(in_features, out_features, bias=bias, device="cpu", dtype=dtype)
+        weights_linear = torch.nn.Linear(self.padded_in_features, self.padded_out_features, bias=bias, device="cpu", dtype=dtype)
+        if initial_linear is not None:
+            with torch.no_grad():
+                weights_linear.weight.data[:initial_linear.weight.shape[0],\
+                                           :initial_linear.weight.shape[1]] = initial_linear.weight.data.detach().cpu()
+                if initial_linear.bias is not None:
+                    weights_linear.bias.data[:] = initial_linear.bias.data
         self.mean, self.scale, self.quant_weight = self._wrap_parameters(self._quantize_weight(
-            initial_linear.weight,
+            weights_linear.weight,
             device=device
         ))
         
         if bias:
-            bias_tensor = initial_linear.bias.data
+            bias_tensor = weights_linear.bias.data
             if device is not None:
                 bias_tensor = bias_tensor.to(device)
             self.bias = torch.nn.Parameter(bias_tensor)
@@ -212,11 +219,19 @@ class BitLinear(MergeableLayer):
             self.register_parameter("bias", None)
         if original_weights_filename:
             torch.save(
-                initial_linear.weight,
+                weights_linear.weight,
                 self.original_weights_filename,
             )        
         
         self.adapter = adapter
+
+    @property
+    def padded_in_features(self) -> int:
+        return int(math.ceil(self.in_features / 5) * 5)
+    
+    @property
+    def padded_out_features(self) -> int:
+        return self.out_features
     
     def _wrap_parameters(self, tensors: Iterable[torch.Tensor]) -> List[torch.Tensor]:
         return [
@@ -242,12 +257,30 @@ class BitLinear(MergeableLayer):
         scale = weight.abs().mean().cpu()
         qweight = quantize_weights(weight, mean).to(device)
         return mean.to(device), scale.to(device), qweight.to(device)
+    
+    def pad_input(self, input: torch.Tensor) -> torch.Tensor:
+        if self.padded_in_features != self.in_features:
+            padding_shape = list(input.shape)[:-1] + [self.padded_in_features - self.in_features]
+            padding = torch.zeros(
+                padding_shape,
+                dtype=input.dtype,
+                device=input.device,
+                requires_grad=False
+            )
+            padded_input = torch.cat([input, padding], dim=-1)
+            return padded_input
+        return input
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        padded_input = self.pad_input(input)
         W = self.get_dequantized_weights()
-        response = torch.nn.functional.linear(input, W, self.bias)
+        response = torch.nn.functional.linear(
+            padded_input,
+            W,
+            self.bias
+        )
         if self.adapter:
-            adapter = self.adapter(input)
+            adapter = self.adapter(padded_input)
             response = response + adapter
         return response
     
