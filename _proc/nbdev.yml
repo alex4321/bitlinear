@@ -1,9 +1,0 @@
-project:
-  output-dir: _docs
-
-website:
-  title: "bitlinear"
-  site-url: "https://alex4321.github.io/https://github.com/alex4321/bitlinear"
-  description: "A bitnet implementation with bitwise optimization"
-  repo-branch: main
-  repo-url: "https://github.com/alex4321/https://github.com/alex4321/bitlinear"
