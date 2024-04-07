@@ -293,7 +293,7 @@ window.Quarto = {
 </section>
 <section id="implementation" class="level2">
 <h2 class="anchored" data-anchor-id="implementation">Implementation</h2>
-<div id="cell-4" class="cell" data-execution_count="3">
+<div id="cell-4" class="cell">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> tempfile</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
@@ -305,9 +305,9 @@ window.Quarto = {
 <section id="parameter-group-index-to-parameter-mapping" class="level2">
 <h2 class="anchored" data-anchor-id="parameter-group-index-to-parameter-mapping">Parameter group index to parameter mapping</h2>
 <p>Now let’s generate a tensor of uint8 index -&gt; [5 * float16] values</p>
-<div id="cell-9" class="cell" data-execution_count="8">
+<div id="cell-9" class="cell">
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>MAPPING_UINT8_TO_5_PARAMS</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-display" data-execution_count="8">
+<div class="cell-output cell-output-display">
 <pre><code>tensor([[-1., -1., -1., -1., -1.],
         [-1., -1., -1., -1.,  0.],
         [-1., -1., -1., -1.,  1.],
@@ -368,7 +368,7 @@ window.Quarto = {
 <section id="test-dequantization-quantization-sequence" class="level2">
 <h2 class="anchored" data-anchor-id="test-dequantization-quantization-sequence">Test dequantization-quantization sequence</h2>
 <p>To test this two functions above I will generate some random “packed weights” than dequantize them and quantize back.</p>
-<div id="cell-17" class="cell" data-execution_count="13">
+<div id="cell-17" class="cell">
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_dequantize_quantize():</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    torch.manual_seed(<span class="dv">42</span>)</span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> _ <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">100</span>):</span>
@@ -409,7 +409,7 @@ class Model(nn.Module):
 <p>Submodules assigned in this way will be registered, and will have their parameters converted too when you call :meth:<code>to</code>, etc.</p>
 <p>.. note:: As per the example above, an <code>__init__()</code> call to the parent class must be made before assignment on the child.</p>
 <p>:ivar training: Boolean represents whether this module is in training or evaluation mode. :vartype training: bool</p>
-<div id="cell-19" class="cell" data-execution_count="15">
+<div id="cell-19" class="cell">
 <div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_lora_merging():</span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> tempfile.NamedTemporaryFile() <span class="im">as</span> weights_file:</span>
 <span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>        weights_file_name <span class="op">=</span> weights_file.name</span>
