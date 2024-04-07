@@ -10,7 +10,7 @@ __all__ = ['BITMISTRAL_ATTENTION_CLASSES', 'BitMistralMLP', 'BitMistralAttention
 """
 Modified code for Mistral model
 """
-from typing import List, Optional, Type, Any, Dict
+from typing import List, Optional, Type, Any, Dict, Union
 
 import torch
 import torch.nn.functional as F
@@ -38,7 +38,7 @@ from ..adapters import LinearAdapter, LoRAAdapter, MergeableLayer
 
 # %% ../../nbs/03_mistral.ipynb 2
 class BitMistralMLP(MistralMLP):
-    def __init__(self, config: MistralConfig, fname_prefix: str):
+    def __init__(self, config: MistralConfig, fname_prefix: str, base: Union[None, MistralMLP] = None):
         nn.Module.__init__(self)
         self.config = config
         self.hidden_size = config.hidden_size
@@ -48,24 +48,27 @@ class BitMistralMLP(MistralMLP):
             out_features=self.intermediate_size,
             bias=False,
             original_weights_filename=f"{fname_prefix}-gate-proj.bin",
+            initial_linear=None if base is None else base.gate_proj
         )
         self.up_proj = BitLinear(
             in_features=self.hidden_size,
             out_features=self.intermediate_size,
             bias=False,
             original_weights_filename=f"{fname_prefix}-up-proj.bin",
+            initial_linear=None if base is None else base.up_proj
         )
         self.down_proj = BitLinear(
             in_features=self.intermediate_size,
             out_features=self.hidden_size,
             bias=False,
-            original_weights_filename=f"{fname_prefix}-down-proj.bin"
+            original_weights_filename=f"{fname_prefix}-down-proj.bin",
+            initial_linear=None if base is None else base.down_proj
         )
         self.act_fn = ACT2FN[config.hidden_act]
 
 # %% ../../nbs/03_mistral.ipynb 3
 class BitMistralAttentionBase:
-    def __init__(self, config: MistralConfig, fname_prefix: str, layer_idx: Optional[int] = None):
+    def __init__(self, config: MistralConfig, fname_prefix: str, layer_idx: Optional[int] = None, base: Union[None, MistralAttention] = None):
         nn.Module.__init__(self)
         self.config = config
         self.layer_idx = layer_idx
@@ -90,25 +93,29 @@ class BitMistralAttentionBase:
             self.hidden_size,
             self.num_heads * self.head_dim,
             bias=False,
-            original_weights_filename=f"{fname_prefix}-q-proj.bin"
+            original_weights_filename=f"{fname_prefix}-q-proj.bin",
+            initial_linear=None if base is None else base.q_proj
         )
         self.k_proj = BitLinear(
             self.hidden_size,
             self.num_key_value_heads * self.head_dim,
             bias=False,
-            original_weights_filename=f"{fname_prefix}-k-proj.bin"
+            original_weights_filename=f"{fname_prefix}-k-proj.bin",
+            initial_linear=None if base is None else base.k_proj
         )
         self.v_proj = BitLinear(
             self.hidden_size,
             self.num_key_value_heads * self.head_dim,
             bias=False,
-            original_weights_filename=f"{fname_prefix}-v-proj.bin"
+            original_weights_filename=f"{fname_prefix}-v-proj.bin",
+            initial_linear=None if base is None else base.v_proj
         )
         self.o_proj = BitLinear(
             self.num_heads * self.head_dim,
             self.hidden_size,
             bias=False,
-            original_weights_filename=f"{fname_prefix}-o-proj.bin"
+            original_weights_filename=f"{fname_prefix}-o-proj.bin",
+            initial_linear=None if base is None else base.o_proj
         )
 
         self.rotary_emb = MistralRotaryEmbedding(
@@ -116,23 +123,26 @@ class BitMistralAttentionBase:
             max_position_embeddings=self.max_position_embeddings,
             base=self.rope_theta,
         )
-
+        if base is not None:
+            self.rotary_emb.load_state_dict(
+                base.rotary_emb.state_dict()
+            )
 
 
 class BitMistralAttention(MistralAttention, BitMistralAttentionBase):
-    def __init__(self, config: MistralConfig, fname_prefix: str, layer_idx: Optional[int] = None):
-        BitMistralAttentionBase.__init__(self, config, fname_prefix, layer_idx)
+    def __init__(self, config: MistralConfig, fname_prefix: str, layer_idx: Optional[int] = None, base: Union[None, MistralAttention] = None):
+        BitMistralAttentionBase.__init__(self, config, fname_prefix, layer_idx, base)
 
 
 class BitMistralFlashAttention2(MistralFlashAttention2, BitMistralAttentionBase):
-    def __init__(self, config: MistralConfig, fname_prefix: str, layer_idx: Optional[int] = None):
-        BitMistralAttentionBase.__init__(self, config, fname_prefix, layer_idx)
+    def __init__(self, config: MistralConfig, fname_prefix: str, layer_idx: Optional[int] = None, base: Union[None, MistralFlashAttention2] = None):
+        BitMistralAttentionBase.__init__(self, config, fname_prefix, layer_idx, base)
         self._flash_attn_uses_top_left_mask = not is_flash_attn_greater_or_equal_2_10()
 
 
 class BitMistralSdpaAttention(MistralSdpaAttention, BitMistralAttentionBase):
-    def __init__(self, config: MistralConfig, fname_prefix: str, layer_idx: Optional[int] = None):
-        BitMistralAttentionBase.__init__(self, config, fname_prefix, layer_idx)
+    def __init__(self, config: MistralConfig, fname_prefix: str, layer_idx: Optional[int] = None, base: Union[None, MistralSdpaAttention] = None):
+        BitMistralAttentionBase.__init__(self, config, fname_prefix, layer_idx, base)
 
 # %% ../../nbs/03_mistral.ipynb 4
 BITMISTRAL_ATTENTION_CLASSES = {
@@ -143,7 +153,7 @@ BITMISTRAL_ATTENTION_CLASSES = {
 
 # %% ../../nbs/03_mistral.ipynb 5
 class BitMistralDecoderLayer(MistralDecoderLayer):
-    def __init__(self, config: MistralConfig, layer_idx: int, fname_prefix: str):
+    def __init__(self, config: MistralConfig, layer_idx: int, fname_prefix: str, base: Union[None, MistralDecoderLayer] = None):
         nn.Module.__init__(self)
         self.hidden_size = config.hidden_size
 
@@ -152,10 +162,12 @@ class BitMistralDecoderLayer(MistralDecoderLayer):
             config=config,
             fname_prefix=f"{fname_prefix}-self-attn.bin",
             layer_idx=layer_idx,
+            base=None if base is None else base.self_attn
         )
         self.mlp = BitMistralMLP(
             config=config,
             fname_prefix=f"{fname_prefix}-mlp.bin",
+            base=None if base is None else base.mlp
         )
         self.input_layernorm = MistralRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         self.post_attention_layernorm = MistralRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
@@ -196,8 +208,8 @@ class BitMistralAdaptersMixin(nn.Module):
         adapters = []
         for layer in layers:
             layer_params = dict(**params)
-            layer_params["in_features"] = layer.in_features
-            layer_params["out_features"] = layer.out_features
+            layer_params["in_features"] = layer.padded_in_features
+            layer_params["out_features"] = layer.padded_out_features
             layer_params["device"] = layer.quant_weight.device
             adapter = adapter_type(**layer_params)
             layer.adapter = adapter
@@ -220,20 +232,29 @@ class BitMistralAdaptersMixin(nn.Module):
 
 # %% ../../nbs/03_mistral.ipynb 7
 class BitMistralModel(MistralModel, BitMistralAdaptersMixin):
-    def __init__(self, config: MistralConfig, fname_prefix: str):
+    def __init__(self, config: MistralConfig, fname_prefix: str, base: Union[None, MistralModel] = None):
         BitMistralPreTrainedModel.__init__(self, config)
         self.padding_idx = config.pad_token_id
         self.vocab_size = config.vocab_size
 
         self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, self.padding_idx)
+        if base is not None:
+            self.embed_tokens.load_state_dict(base.embed_tokens.state_dict())
         self.layers = nn.ModuleList(
             [
-                BitMistralDecoderLayer(config, layer_idx, f"{fname_prefix}-decoder-{layer_idx}")
+                BitMistralDecoderLayer(
+                    config,
+                    layer_idx,
+                    f"{fname_prefix}-decoder-{layer_idx}",
+                    base=None if base is None else base.layers[layer_idx]
+                )
                 for layer_idx in range(config.num_hidden_layers)
             ]
         )
         self._attn_implementation = config._attn_implementation
         self.norm = MistralRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        if base is not None:
+            self.norm.load_state_dict(base.norm.state_dict())
 
         self.gradient_checkpointing = False
         # Initialize weights and apply final processing
@@ -241,22 +262,26 @@ class BitMistralModel(MistralModel, BitMistralAdaptersMixin):
 
 # %% ../../nbs/03_mistral.ipynb 8
 class BitMistralForCausalLM(MistralForCausalLM, BitMistralAdaptersMixin):
-    def __init__(self, config: MistralConfig, fname_prefix: str):
+    def __init__(self, config: MistralConfig, fname_prefix: str, base: Union[None, MistralForCausalLM] = None):
         BitMistralPreTrainedModel.__init__(self, config)
-        self.model = BitMistralModel(config, fname_prefix)
+        self.model = BitMistralModel(config, fname_prefix, base=None if base is None else base.model)
         self.vocab_size = config.vocab_size
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+        if base is not None:
+            self.lm_head.load_state_dict(base.lm_head.state_dict())
 
         # Initialize weights and apply final processing
         self.post_init()
 
 # %% ../../nbs/03_mistral.ipynb 9
 class BitMistralForSequenceClassification(MistralForSequenceClassification, BitMistralAdaptersMixin):
-    def __init__(self, config: MistralConfig, fname_prefix: str):
+    def __init__(self, config: MistralConfig, fname_prefix: str, base: Union[None, MistralForSequenceClassification] = None):
         BitMistralPreTrainedModel.__init__(self, config)
         self.num_labels = config.num_labels
-        self.model = MistralModel(config, fname_prefix)
+        self.model = MistralModel(config, fname_prefix, base=None if base is None else base.model)
         self.score = nn.Linear(config.hidden_size, self.num_labels, bias=False)
+        if base is not None:
+            self.score.load_state_dict(base.score.load_state_dict())
 
         # Initialize weights and apply final processing
         self.post_init()
