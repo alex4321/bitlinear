@@ -74,10 +74,13 @@ class ReLoRAOptimizer(Optimizer):
         self.optimizer.param_groups = groups
 
     def state_dict(self) -> Dict[str, Any]:
-        return self.optimizer.state_dict()
+        return dict(self.optimizer.state_dict(), made_steps=self.made_steps)
     
     def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
-        return self.optimizer.load_state_dict(state_dict)
+        self.made_steps = state_dict['made_steps']
+        return self.optimizer.load_state_dict({
+            key: value for key, value in state_dict.items() if key not in {'made_steps'}
+        })
 
 # %% ../nbs/02_relora.ipynb 9
 def is_pickleable(obj: Any) -> bool:
