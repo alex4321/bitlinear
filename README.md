@@ -86,10 +86,10 @@ pip install bitlinear@git+https://github.com/alex4321/bitlinear.git
 
 - Pretraining
 
-I conducted two experiments
-[experiments/00_pretraining/mistral-training.ipynb](raw%20Mistral%20architecture%20model%20pretraining)
-and
-[experiments/00_pretraining/bitmistral-training-lr-2e-4-rank-128–2000-restart.ipynb](BitNet+ReLoRA%20Mistral%20architecture%20model%20pretraining)
+I conducted two experiments [raw Mistral architecture model
+pretraining](experiments/00_pretraining/mistral-training.ipynb) and
+[BitNet+ReLoRA Mistral architecture model
+pretraining](experiments/00_pretraining/bitmistral-training-lr-2e-4-rank-128--2000-restart.ipynb)
 
 and results end up being comparable.
 
