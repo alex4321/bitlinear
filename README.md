@@ -82,6 +82,53 @@ Now I am conducting experiments to see how well does the approach works.
 pip install bitlinear@git+https://github.com/alex4321/bitlinear.git
 ```
 
+## Experiment results
+
+- Pretraining
+
+I conducted two experiments
+[experiments/00_pretraining/mistral-training.ipynb](raw%20Mistral%20architecture%20model%20pretraining)
+and
+[experiments/00_pretraining/bitmistral-training-lr-2e-4-rank-128–2000-restart.ipynb](BitNet+ReLoRA%20Mistral%20architecture%20model%20pretraining)
+
+and results end up being comparable.
+
+For the original method I got
+
+    Step    Training Loss   Validation Loss Memory Usage Mb
+    2000    5.178500    4.655300    29107
+    4000    4.267300    4.253386    29541
+    6000    3.997500    4.030161    30021
+    8000    4.739200    3.861828    30521
+    10000   3.159500    3.761141    30521
+    12000   4.065400    3.672445    30521
+    14000   3.764200    3.598749    30521
+    16000   3.897100    3.530349    30521
+    18000   3.261500    3.468710    30521
+    20000   2.736200    3.411213    30521
+    22000   2.150800    3.359339    30521
+    24000   2.949400    3.317924    30521
+
+while for optimized one:
+
+    Step    Training Loss   Validation Loss Memory Usage Mb
+    2000    5.049300    4.500881    8928
+    4000    4.113500    4.085669    8840
+    6000    3.948200    3.910413    8636
+    8000    4.600700    3.776079    10518
+    10000   3.124400    3.722620    9386
+    12000   4.122400    3.669651    8794
+    14000   3.781300    3.606225    8486
+    16000   3.858200    3.570461    8912
+    18000   3.319800    3.529242    8826
+    20000   2.763000    3.487872    9796
+    22000   2.137100    3.442672    9616
+    24000   3.097400    3.421924    8994
+    -
+    26000   2.706200    3.380465    9468
+    28000   3.897200    3.357405    10138
+    30000   3.217000    3.332875    9786
+
 ## How to use
 
 Here I will make a simple example upon which I am experimenting now
@@ -233,19 +280,14 @@ trainer = Trainer(
 trainer.train()
 ```
 
-So far it seems to have far more memory efficiency (9GB consumed in this
-method and ~29Gb consumed through a normal training).
+## TODO
 
-The quality seemed comparable, but it was just a start of the training
-process, so no conclusions yet.
-
-Before continuing the stuff I will have to debug
-
-    /usr/local/lib/python3.10/dist-packages/torch/serialization.py in _save(obj, zip_file, pickle_module, pickle_protocol, _disable_byteorder_record)
-        839     pickler = pickle_module.Pickler(data_buf, protocol=pickle_protocol)
-        840     pickler.persistent_id = persistent_id
-    --> 841     pickler.dump(obj)
-        842     data_value = data_buf.getvalue()
-        843     zip_file.write_record('data.pkl', data_value, len(data_value))
-
-    AttributeError: Can't pickle local object 'ReLoRASchedulerLambda._wrap_lr_lambda.<locals>._func'
+- Make experiment with finetuning the existing model this way
+- Make experiment with self-distillation from the existing model this
+  way
+- Write an optimized BitLinear kernel:
+  - current one dequantize weights than feed them to
+    `torch.nn.function.linear` so spawning dequantized weights in memory
+    will take some time. Why not do matrix multiplication on the fly,
+    this way further decrease an amount of memory required for both
+    training and inference?

@@ -177,7 +177,8 @@ ul.task-list li input[type="checkbox"] {
 <blockquote class="blockquote">
 <pre><code> BitMistralMLP
                 (config:transformers.models.mistral.configuration_mistral.
-                MistralConfig, fname_prefix:str)</code></pre>
+                MistralConfig, fname_prefix:str, base:Optional[transformer
+                s.models.mistral.modeling_mistral.MistralMLP]=None)</code></pre>
 </blockquote>
 <p>Base class for all neural network modules.</p>
 <p>Your models should also subclass this class.</p>
@@ -205,7 +206,9 @@ class Model(nn.Module):
 <pre><code> BitMistralSdpaAttention
                           (config:transformers.models.mistral.configuratio
                           n_mistral.MistralConfig, fname_prefix:str,
-                          layer_idx:Optional[int]=None)</code></pre>
+                          layer_idx:Optional[int]=None, base:Optional[tran
+                          sformers.models.mistral.modeling_mistral.Mistral
+                          SdpaAttention]=None)</code></pre>
 </blockquote>
 <p>Mistral attention module using torch.nn.functional.scaled_dot_product_attention. This module inherits from <code>MistralAttention</code> as the weights of the module stays untouched. The only changes are on the forward pass to adapt to SDPA API.</p>
 <hr>
@@ -216,7 +219,9 @@ class Model(nn.Module):
 <pre><code> BitMistralFlashAttention2
                             (config:transformers.models.mistral.configurat
                             ion_mistral.MistralConfig, fname_prefix:str,
-                            layer_idx:Optional[int]=None)</code></pre>
+                            layer_idx:Optional[int]=None, base:Optional[tr
+                            ansformers.models.mistral.modeling_mistral.Mis
+                            tralFlashAttention2]=None)</code></pre>
 </blockquote>
 <p>Mistral flash attention module. This module inherits from <code>MistralAttention</code> as the weights of the module stays untouched. The only required change would be on the forward pass where it needs to correctly call the public API of flash attention and deal with padding tokens in case the input contains any of them.</p>
 <hr>
@@ -227,7 +232,9 @@ class Model(nn.Module):
 <pre><code> BitMistralAttention
                       (config:transformers.models.mistral.configuration_mi
                       stral.MistralConfig, fname_prefix:str,
-                      layer_idx:Optional[int]=None)</code></pre>
+                      layer_idx:Optional[int]=None, base:Optional[transfor
+                      mers.models.mistral.modeling_mistral.MistralAttentio
+                      n]=None)</code></pre>
 </blockquote>
 <p>Multi-headed attention from ‘Attention Is All You Need’ paper. Modified to use sliding window attention: Longformer and “Generating Long Sequences with Sparse Transformers”.</p>
 <hr>
@@ -238,7 +245,9 @@ class Model(nn.Module):
 <pre><code> BitMistralAttentionBase
                           (config:transformers.models.mistral.configuratio
                           n_mistral.MistralConfig, fname_prefix:str,
-                          layer_idx:Optional[int]=None)</code></pre>
+                          layer_idx:Optional[int]=None, base:Optional[tran
+                          sformers.models.mistral.modeling_mistral.Mistral
+                          Attention]=None)</code></pre>
 </blockquote>
 <p>Initialize self. See help(type(self)) for accurate signature.</p>
 <hr>
@@ -249,7 +258,9 @@ class Model(nn.Module):
 <pre><code> BitMistralDecoderLayer
                          (config:transformers.models.mistral.configuration
                          _mistral.MistralConfig, layer_idx:int,
-                         fname_prefix:str)</code></pre>
+                         fname_prefix:str, base:Optional[transformers.mode
+                         ls.mistral.modeling_mistral.MistralDecoderLayer]=
+                         None)</code></pre>
 </blockquote>
 <p>Base class for all neural network modules.</p>
 <p>Your models should also subclass this class.</p>
@@ -313,7 +324,9 @@ class Model(nn.Module):
 <blockquote class="blockquote">
 <pre><code> BitMistralModel
                   (config:transformers.models.mistral.configuration_mistra
-                  l.MistralConfig, fname_prefix:str)</code></pre>
+                  l.MistralConfig, fname_prefix:str, base:Optional[transfo
+                  rmers.models.mistral.modeling_mistral.MistralModel]=None
+                  )</code></pre>
 </blockquote>
 <p>The bare Mistral Model outputting raw hidden-states without any specific head on top. This model inherits from [<code>PreTrainedModel</code>]. Check the superclass documentation for the generic methods the library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads etc.)</p>
 <p>This model is also a PyTorch <a href="https://pytorch.org/docs/stable/nn.html#torch.nn.Module">torch.nn.Module</a> subclass. Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and behavior.</p>
@@ -327,7 +340,9 @@ class Model(nn.Module):
 <blockquote class="blockquote">
 <pre><code> BitMistralForCausalLM
                         (config:transformers.models.mistral.configuration_
-                        mistral.MistralConfig, fname_prefix:str)</code></pre>
+                        mistral.MistralConfig, fname_prefix:str, base:Opti
+                        onal[transformers.models.mistral.modeling_mistral.
+                        MistralForCausalLM]=None)</code></pre>
 </blockquote>
 <p>The bare Mistral Model outputting raw hidden-states without any specific head on top. This model inherits from [<code>PreTrainedModel</code>]. Check the superclass documentation for the generic methods the library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads etc.)</p>
 <p>This model is also a PyTorch <a href="https://pytorch.org/docs/stable/nn.html#torch.nn.Module">torch.nn.Module</a> subclass. Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and behavior.</p>
@@ -340,7 +355,10 @@ class Model(nn.Module):
 <pre><code> BitMistralForSequenceClassification
                                       (config:transformers.models.mistral.
                                       configuration_mistral.MistralConfig,
-                                      fname_prefix:str)</code></pre>
+                                      fname_prefix:str, base:Optional[tran
+                                      sformers.models.mistral.modeling_mis
+                                      tral.MistralForSequenceClassificatio
+                                      n]=None)</code></pre>
 </blockquote>
 <p>The Mistral Model transformer with a sequence classification head on top (linear layer).</p>
 <p>[<code>MistralForSequenceClassification</code>] uses the last token in order to do the classification, as other causal models (e.g.&nbsp;GPT-2) do.</p>
