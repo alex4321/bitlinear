@@ -2,7 +2,7 @@
 
 # %% auto 0
 __all__ = ['STORAGE_BIT_COUNT', 'STORAGE_DTYPE', 'STORAGE_NP_DTYPE', 'STORAGE_VALUES_PER_ITEM', 'MAPPING_UINT8_TO_5_PARAMS',
-           'quantization_inner', 'dequantize_weights', 'quantize_weights', 'BitLinear']
+           'quantization_inner', 'dequantize_weights', 'quantize_weights', 'DequantizeApply', 'BitLinear']
 
 # %% ../nbs/01_bitlinear.ipynb 4
 from typing import List, Union, Tuple, Iterable
@@ -79,8 +79,8 @@ def dequantize_weights(weight_mapping: torch.Tensor, packed_weights: torch.Tenso
     weights_per_item = weight_mapping.shape[-1]
     weights_packed_shape = list(packed_weights.shape[:-1]) + \
         [weights_per_item * packed_weights.shape[-1]]
-    dequantized_weights_k = weight_mapping[packed_weights.long(), :].view(weights_packed_shape)
-    return dequantized_weights_k * scale
+    dequantized_weights_k = (scale * weight_mapping)[packed_weights.long(), :].view(weights_packed_shape)
+    return dequantized_weights_k
 
 # %% ../nbs/01_bitlinear.ipynb 20
 @torch.no_grad
@@ -94,6 +94,26 @@ def quantize_weights(weights: torch.FloatTensor, mean: Union[torch.Tensor, float
     return weigths_group_chosen
 
 # %% ../nbs/01_bitlinear.ipynb 23
+class DequantizeApply(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, mapping, quant_weight, scale, input):
+        # Compute W in the forward pass
+        W = dequantize_weights(mapping, quant_weight, scale)
+        ctx.save_for_backward(input, mapping, quant_weight, scale)
+        return torch.nn.functional.linear(input, W)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        _, mapping, quant_weight, scale = ctx.saved_tensors
+        # Recompute W during the backward pass
+        W = dequantize_weights(mapping, quant_weight, scale)
+        grad_input = grad_output.mm(W)
+        # Compute other necessary gradients if needed
+        # Example: grad_mapping, grad_quant_weight, grad_scale, etc.
+        # These would typically be None if these tensors do not require gradients
+        return None, None, None, grad_input
+
+# %% ../nbs/01_bitlinear.ipynb 24
 class BitLinear(MergeableLayer):
     def __init__(self,
                  in_features: int,
@@ -192,12 +212,9 @@ class BitLinear(MergeableLayer):
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         padded_input = self.pad_input(input)
-        W = self.get_dequantized_weights()
-        response = torch.nn.functional.linear(
-            padded_input,
-            W,
-            self.bias
-        )
+        response = DequantizeApply.apply(self.mapping, self.quant_weight, self.scale, padded_input)
+        if self.bias is not None:
+            response += self.bias.view([1] * (len(response.shape) - 1) + [-1])
         if self.adapter:
             adapter = self.adapter(padded_input)
             response = response + adapter
