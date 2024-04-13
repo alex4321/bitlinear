@@ -111,7 +111,7 @@ class DequantizeApply(torch.autograd.Function):
         if mapping.dtype != grad_output.dtype:
             mapping = mapping.type(grad_output.dtype)
         W = dequantize_weights(mapping, quant_weight, scale)
-        grad_input = grad_output.view([-1, 1]).mm(W).view(list(grad_output.shape)[:-1] + [-1])
+        grad_input = grad_output.view([-1, grad_output.shape[-1]]).mm(W).view(list(grad_output.shape)[:-1] + [-1])
         #grad_input = grad_output.mm(W)
         # Compute other necessary gradients if needed
         # Example: grad_mapping, grad_quant_weight, grad_scale, etc.
