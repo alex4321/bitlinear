@@ -98,6 +98,8 @@ class DequantizeApply(torch.autograd.Function):
     @staticmethod
     def forward(ctx, mapping, quant_weight, scale, input):
         # Compute W in the forward pass
+        if mapping.dtype != input.dtype:
+            mapping = mapping.type(input.dtype)
         W = dequantize_weights(mapping, quant_weight, scale)
         ctx.save_for_backward(input, mapping, quant_weight, scale)
         return torch.nn.functional.linear(input, W)
@@ -106,8 +108,11 @@ class DequantizeApply(torch.autograd.Function):
     def backward(ctx, grad_output):
         _, mapping, quant_weight, scale = ctx.saved_tensors
         # Recompute W during the backward pass
+        if mapping.dtype != grad_output.dtype:
+            mapping = mapping.type(grad_output.dtype)
         W = dequantize_weights(mapping, quant_weight, scale)
-        grad_input = grad_output.mm(W)
+        grad_input = grad_output.view([-1, 1]).mm(W).view(list(grad_output.shape)[:-1] + [-1])
+        #grad_input = grad_output.mm(W)
         # Compute other necessary gradients if needed
         # Example: grad_mapping, grad_quant_weight, grad_scale, etc.
         # These would typically be None if these tensors do not require gradients
