@@ -55,6 +55,7 @@ class ReLoRAOptimizer(Optimizer):
         if self.made_steps > 0 and self.made_steps % self.reset_n_steps == 0:
             for layer in self.mergeable_layers:
                 layer.merge_adapter()
+            self.optimizer.zero_grad(set_to_none=True)
             self.optimizer = None
             self._cleanup()
             self.optimizer = self._initialize_optimizer()
