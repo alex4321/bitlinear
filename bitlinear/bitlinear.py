@@ -2,7 +2,7 @@
 
 # %% auto 0
 __all__ = ['STORAGE_BIT_COUNT', 'STORAGE_DTYPE', 'STORAGE_NP_DTYPE', 'STORAGE_VALUES_PER_ITEM', 'MAPPING_UINT8_TO_5_PARAMS',
-           'quantization_inner', 'dequantize_weights', 'quantize_weights', 'DequantizeApply', 'BitLinear']
+           'dequantize_weights', 'quantize_weights', 'DequantizeApply', 'BitLinear']
 
 # %% ../nbs/01_bitlinear.ipynb 4
 from typing import List, Union, Tuple, Iterable
@@ -58,21 +58,7 @@ MAPPING_UINT8_TO_5_PARAMS = _generate_parameter_mappings_tensor(
 )
 assert MAPPING_UINT8_TO_5_PARAMS.shape == (256, 5)
 
-# %% ../nbs/01_bitlinear.ipynb 16
-def quantization_inner(data: np.ndarray) -> np.ndarray:
-    values = data.reshape([-1, STORAGE_VALUES_PER_ITEM])
-    index = None
-    for i in range(STORAGE_VALUES_PER_ITEM):
-        index_shift = np.round((values[:, STORAGE_VALUES_PER_ITEM - 1 - i] + 1)).astype(STORAGE_NP_DTYPE) * (3 ** i)
-        if index is None:
-            index = index_shift
-        else:
-            index += index_shift
-    return index.reshape(
-        list(data.shape[:-1]) + [data.shape[-1] // STORAGE_VALUES_PER_ITEM]
-    )
-
-# %% ../nbs/01_bitlinear.ipynb 18
+# %% ../nbs/01_bitlinear.ipynb 17
 @torch.no_grad
 def dequantize_weights(weight_mapping: torch.Tensor, packed_weights: torch.Tensor, scale: Union[torch.Tensor, float]) \
     -> torch.Tensor:
@@ -82,16 +68,21 @@ def dequantize_weights(weight_mapping: torch.Tensor, packed_weights: torch.Tenso
     dequantized_weights_k = (scale * weight_mapping)[packed_weights.long(), :].view(weights_packed_shape)
     return dequantized_weights_k
 
-# %% ../nbs/01_bitlinear.ipynb 20
+# %% ../nbs/01_bitlinear.ipynb 19
 @torch.no_grad
 def quantize_weights(weights: torch.FloatTensor, mean: Union[torch.Tensor, float]) \
     -> torch.Tensor:
     weights_centered = weights - mean
-    weights_sign = weights_centered.sign()
-    weights_sign_np = weights_sign.detach().cpu().numpy()
-    weigths_group_chosen_np = quantization_inner(weights_sign_np)
-    weigths_group_chosen = torch.ByteTensor(weigths_group_chosen_np).to(weights.device)
-    return weigths_group_chosen
+    weights_sign = weights_centered.sign() + 1
+    weights_sign_reshaped = weights_sign.reshape(list(weights_sign.shape)[:-1] + [-1, 5])
+    weights_sign_reshaped *= torch.FloatTensor([
+        3 ** 4,
+        3 ** 3,
+        3 ** 2,
+        3 ** 1,
+        3 ** 0
+    ], device=weights_sign_reshaped.device).reshape([1] * (len(weights_sign_reshaped.shape) - 1) + [5])
+    return weights_sign_reshaped.sum(dim=-1).to(torch.uint8)
 
 # %% ../nbs/01_bitlinear.ipynb 23
 class DequantizeApply(torch.autograd.Function):
