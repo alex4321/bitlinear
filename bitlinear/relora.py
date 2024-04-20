@@ -7,7 +7,7 @@ __all__ = ['ReLoRAOptimizer', 'is_pickleable', 'ReLoRASchedulerLambda', 'LinearW
 from typing import Type, Any, Dict, Iterable, Callable, Union, List
 import torch
 from torch.utils.data import TensorDataset, DataLoader
-from .bitlinear import BitLinear
+from .bitlinear import BitLinearBasic, BitLinear
 from .adapters import LoRAAdapter, MergeableLayer
 from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import LambdaLR
