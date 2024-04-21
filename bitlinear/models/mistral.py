@@ -283,7 +283,8 @@ class BitMistralForCausalLM(MistralForCausalLM, BitMistralAdaptersMixin):
         )
 
         # Initialize weights and apply final processing
-        self.post_init()
+        if base is None:
+            self.post_init()
 
 # %% ../../nbs/models/03_mistral.ipynb 9
 class BitMistralForSequenceClassification(MistralForSequenceClassification, BitMistralAdaptersMixin):
@@ -297,4 +298,5 @@ class BitMistralForSequenceClassification(MistralForSequenceClassification, BitM
         )
 
         # Initialize weights and apply final processing
-        self.post_init()
+        if base is None:
+            self.post_init()
