@@ -35,6 +35,7 @@ from transformers.models.mistral.modeling_mistral import \
 
 from ..bitlinear import BitLinear
 from ..adapters import LinearAdapter, LoRAAdapter, MergeableLayer
+from .utils import initialize_state, get_submodule
 
 # %% ../../nbs/models/03_mistral.ipynb 2
 class BitMistralMLP(MistralMLP):
@@ -64,7 +65,10 @@ class BitMistralMLP(MistralMLP):
             original_weights_filename=f"{fname_prefix}-down-proj.bin",
             initial_linear=None if base is None else base.down_proj
         )
-        self.act_fn = ACT2FN[config.hidden_act]
+        self.act_fn = initialize_state(
+            ACT2FN[config.hidden_act],
+            get_submodule(base, 'act_fn')
+        )
 
 # %% ../../nbs/models/03_mistral.ipynb 3
 class BitMistralAttentionBase:
@@ -118,15 +122,14 @@ class BitMistralAttentionBase:
             initial_linear=None if base is None else base.o_proj
         )
 
-        self.rotary_emb = MistralRotaryEmbedding(
-            self.head_dim,
-            max_position_embeddings=self.max_position_embeddings,
-            base=self.rope_theta,
+        self.rotary_emb = initialize_state(
+            MistralRotaryEmbedding(
+                self.head_dim,
+                max_position_embeddings=self.max_position_embeddings,
+                base=self.rope_theta,
+            ),
+            get_submodule(base, 'rotary_emb')
         )
-        if base is not None:
-            self.rotary_emb.load_state_dict(
-                base.rotary_emb.state_dict()
-            )
 
 
 class BitMistralAttention(MistralAttention, BitMistralAttentionBase):
@@ -169,8 +172,14 @@ class BitMistralDecoderLayer(MistralDecoderLayer):
             fname_prefix=f"{fname_prefix}-mlp.bin",
             base=None if base is None else base.mlp
         )
-        self.input_layernorm = MistralRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
-        self.post_attention_layernorm = MistralRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.input_layernorm = initialize_state(
+            MistralRMSNorm(config.hidden_size, eps=config.rms_norm_eps),
+            get_submodule(base, 'input_layernorm')
+        )
+        self.post_attention_layernorm = initialize_state(
+            MistralRMSNorm(config.hidden_size, eps=config.rms_norm_eps),
+            get_submodule(base, 'post_attention_layernorm')
+        )
 
 # %% ../../nbs/models/03_mistral.ipynb 6
 class BitMistralPreTrainedModel(MistralPreTrainedModel):
@@ -237,9 +246,10 @@ class BitMistralModel(MistralModel, BitMistralAdaptersMixin):
         self.padding_idx = config.pad_token_id
         self.vocab_size = config.vocab_size
 
-        self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, self.padding_idx)
-        if base is not None:
-            self.embed_tokens.load_state_dict(base.embed_tokens.state_dict())
+        self.embed_tokens = initialize_state(
+            nn.Embedding(config.vocab_size, config.hidden_size, self.padding_idx),
+            get_submodule(base, 'embed_tokens')
+        )
         self.layers = nn.ModuleList(
             [
                 BitMistralDecoderLayer(
@@ -252,9 +262,10 @@ class BitMistralModel(MistralModel, BitMistralAdaptersMixin):
             ]
         )
         self._attn_implementation = config._attn_implementation
-        self.norm = MistralRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
-        if base is not None:
-            self.norm.load_state_dict(base.norm.state_dict())
+        self.norm = initialize_state(
+            MistralRMSNorm(config.hidden_size, eps=config.rms_norm_eps),
+            get_submodule(base, 'norm')
+        )
 
         self.gradient_checkpointing = False
         # Initialize weights and apply final processing
@@ -266,9 +277,10 @@ class BitMistralForCausalLM(MistralForCausalLM, BitMistralAdaptersMixin):
         BitMistralPreTrainedModel.__init__(self, config)
         self.model = BitMistralModel(config, fname_prefix, base=None if base is None else base.model)
         self.vocab_size = config.vocab_size
-        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
-        if base is not None:
-            self.lm_head.load_state_dict(base.lm_head.state_dict())
+        self.lm_head = initialize_state(
+            nn.Linear(config.hidden_size, config.vocab_size, bias=False),
+            get_submodule(base, 'lm_head')
+        )
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -279,9 +291,10 @@ class BitMistralForSequenceClassification(MistralForSequenceClassification, BitM
         BitMistralPreTrainedModel.__init__(self, config)
         self.num_labels = config.num_labels
         self.model = MistralModel(config, fname_prefix, base=None if base is None else base.model)
-        self.score = nn.Linear(config.hidden_size, self.num_labels, bias=False)
-        if base is not None:
-            self.score.load_state_dict(base.score.load_state_dict())
+        self.score = initialize_state(
+            nn.Linear(config.hidden_size, self.num_labels, bias=False),
+            get_submodule(base, 'score')
+        )
 
         # Initialize weights and apply final processing
         self.post_init()
